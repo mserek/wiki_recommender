@@ -1,18 +1,9 @@
 """
-This module contains utilities to scrape and preprocess text data from Wikipedia articles.
-
-Functions
----------
-get_wiki_texts(links: List[str], limit: int = 50, sleep_time: float = 0.5) -> List[Tuple[str, str]]:
-    Scrape the text content from a list of Wikipedia article links.
-
-preprocess_texts(text_df: pd.DataFrame) -> pd.DataFrame:
-    Preprocess the raw text paragraphs in a DataFrame by applying stemming and lemmatization,
-    and removing English stopwords.
+Module containing utilities to scrape and preprocess text data from Wikipedia articles.
 
 Command-line interface
 ----------------------
-When this module is executed as a script, it provides a command-line interface to scrape
+When executed as a script, it provides a command-line interface to scrape
 Wikipedia articles and save the preprocessed data to a pickled pandas Dataframe.
 
 positional arguments:
@@ -48,8 +39,88 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def _validate_url(url: str) -> bool:
-    return ":" not in url and "#" not in url and url.startswith("/wiki/")
+def get_article_title(url: str) -> str:
+    """
+    Return wikipedia article title given a Wikipedia URL.
+
+    Parameters
+    ----------
+    url : str
+        The Wikipedia URL.
+
+    Returns
+    -------
+    str
+        The article title extracted from the URL.
+
+    Examples
+    --------
+    >>> get_article_title('https://en.wikipedia.org/wiki/Lemmatisation')
+    'Lemmatisation'
+
+    >>> get_article_title('en.wikipedia.org/wiki/Lemmatisation')
+    'Lemmatisation'
+
+    >>> get_article_title('/wiki/Lemmatisation')
+    'Lemmatisation'
+    """
+    return (
+        url.removeprefix("https://")
+        .removeprefix("en.wikipedia.org")
+        .removeprefix("/wiki/")
+    )
+
+
+def _validate_title(title: str) -> bool:
+    return ":" not in title and "#" not in title
+
+
+def get_soup(title: str) -> BeautifulSoup | None:
+    """
+    Fetch the HTML content of a given Wikipedia page.
+
+    Parameters
+    ----------
+    title : str
+        The title of the Wikipedia page to fetch i.e. last part of URL's path component
+
+    Returns
+    -------
+    BeautifulSoup or None
+        A BeautifulSoup object representing the HTML content of the page, if the request
+        was successful. Returns None if the request failed.
+
+    Examples
+    --------
+    >>> soup = get_soup("Joseph_Fourier")
+    >>> if soup is not None:
+    ...     print("Page scraped successfully!")
+    ... else:
+    ...     print("Unable to scrape page.")
+
+    """
+    response = requests.get(f"https://en.wikipedia.org/wiki/{title}", timeout=5)
+    if response.status_code == 200:
+        return BeautifulSoup(response.text, "html.parser")
+    return None
+
+
+def get_raw_text(soup: BeautifulSoup) -> str:
+    """
+    Extract the raw text content of a given Wikipedia page paragraphs.
+
+    Parameters
+    ----------
+    soup : BeautifulSoup
+        A BeautifulSoup object representing the HTML content of a Wikipedia page.
+
+    Returns
+    -------
+    str
+        The raw text content of the page's paragraphs.
+    """
+    paragraphs = soup.find_all("p")
+    return "".join((paragraph.text for paragraph in paragraphs))
 
 
 def scrape_wiki_texts(
@@ -75,46 +146,123 @@ def scrape_wiki_texts(
         A list of tuples where the first element is the URL (with the prefix removed),
         the second element is the raw text content of the Wikipedia page.
     """
-
     queue: deque = deque()
     visited = set()
-    currently_visited = 0
+    total_visited = 0
     out = []
+    for title in links:
+        title = get_article_title(title)
+        if title not in visited:
+            queue.append(title)
 
-    for url in links:
-        url_no_prefix = url.removeprefix("https://").removeprefix("en.wikipedia.org")
-        if url_no_prefix not in visited:
-            queue.append(url_no_prefix)
-
-    while queue and currently_visited < limit:
-        url = queue.popleft()
-        if _validate_url(url) and url not in visited:
-            currently_visited += 1
-            visited.add(url)
+    while queue and total_visited < limit:
+        title = queue.popleft()
+        if _validate_title(title) and title not in visited:
+            total_visited += 1
+            visited.add(title)
             sleep(sleep_time)
-            response = requests.get(f"https://en.wikipedia.org{url}", timeout=5)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, "html.parser")
-                page = soup.find_all("p")
-                raw_text = "".join((paragraph.text for paragraph in page))
-                out.append((url[6:], raw_text))
+            soup = get_soup(title)
+            if soup is not None:
+                raw_text = get_raw_text(soup)
+                out.append((title, raw_text))
+
                 children = soup.find_all("a", attrs={"href": re.compile(r"^/wiki")})
                 for child_link in children:
-                    url_no_prefix = (
-                        child_link["href"]
-                        .removeprefix("https://")
-                        .removeprefix("en.wikipedia.org")
-                    )
-                    queue.append(url_no_prefix)
+                    title = get_article_title(child_link["href"])
+                    queue.append(title)
     return out
+
+
+nltk.download("wordnet")
+nltk.download("omw-1.4")
+_stemmer = nltk.stem.PorterStemmer()
+_lemmatizer = nltk.stem.WordNetLemmatizer()
+_stopwords_english = nltk.corpus.stopwords.words("english")
+
+
+def clean_text(text: str) -> str:
+    """
+    Clean a given text.
+
+    Casefolds all letters ande and replaces all whitespace characters with spaces.
+    Drops non-alphanumeric and non-whitespace characters.
+
+    Parameters
+    ----------
+    text : str
+        The text to be cleaned.
+
+    Returns
+    -------
+    str
+        The cleaned text.
+    """
+    return "".join(
+        (
+            letter.casefold() if not letter.isspace() else " "
+            for letter in text
+            if letter.isalpha() or letter.isspace()
+        )
+    )
+
+
+def remove_stopwords(text: str) -> str:
+    """
+    Remove all stopwords from a given text.
+
+    Parameters
+    ----------
+    text : str
+        The text from which to remove stopwords.
+
+    Returns
+    -------
+    str
+        The input text with all stopwords removed.
+    """
+    return " ".join((word for word in text.split() if word not in _stopwords_english))
+
+
+def lemmatize_text(text: str) -> str:
+    """
+    Lemmatizes a given text by reducing all words to their base form.
+
+    Parameters
+    ----------
+    text : str
+        The text to be lemmatized.
+
+    Returns
+    -------
+    str
+        The lemmatized text.
+    """
+    return " ".join((_lemmatizer.lemmatize(word) for word in text.split()))
+
+
+def stem_text(text: str) -> str:
+    """
+    Stems a given text by reducing all words to their stem.
+
+    Parameters
+    ----------
+    text : str
+        The text to be stemmed.
+
+    Returns
+    -------
+    str
+        The stemmed text.
+    """
+    return " ".join((_stemmer.stem(word) for word in text.split()))
 
 
 def preprocess_articles(text_df: pd.DataFrame, text_column: str) -> pd.DataFrame:
     """
     Preprocess text data in a DataFrame.
 
-    This function applies several text preprocessing steps to a DataFrame containing raw text data.
-    The steps include removing duplicate paragraphs, filtering non-alphanumeric characters,
+    Applies several text preprocessing steps to a DataFrame containing raw text data.
+    The steps include removing duplicates, filtering non-alphanumeric characters,
     removing english stopwords, stemming, lemmatization.
 
     Parameters
@@ -127,40 +275,21 @@ def preprocess_articles(text_df: pd.DataFrame, text_column: str) -> pd.DataFrame
     Returns
     -------
     pandas.DataFrame
-        A new DataFrame with the following additional columns:
+        A new DataFrame with new index and the following additional columns:
         - 'cleaned_text': text with non-alphanumeric characters removed
         - 'stopwords_filtered': cleaned text data with English stopwords removed.
         - 'stemmed': cleaned text data after stemming and stopword removal.
         - 'lemmatized': cleaned text data after lemmatization and stopword removal.
     """
-
-    stopwords_english = nltk.corpus.stopwords.words("english")
-    nltk.download("wordnet")
-    nltk.download("omw-1.4")
-    stemmer = nltk.stem.PorterStemmer()
-    lemmatizer = nltk.stem.WordNetLemmatizer()
-
-    return text_df.drop_duplicates(subset=text_column, ignore_index=True).assign(
-        cleaned_text=text_df[text_column].apply(
-            lambda text: "".join(
-                (
-                    letter.lower() if not letter.isspace() else " "
-                    for letter in text
-                    if letter.isalpha() or letter.isspace()
-                )
-            )
-        ),
-        stopwords_filtered=lambda df_: df_["cleaned_text"].apply(
-            lambda text: " ".join(
-                (word for word in text.split() if word not in stopwords_english)
-            )
-        ),
-        stemmed=lambda df_: df_["stopwords_filtered"].apply(
-            lambda text: " ".join((stemmer.stem(word) for word in text.split()))
-        ),
-        lemmatized=lambda df_: df_["stopwords_filtered"].apply(
-            lambda text: " ".join((lemmatizer.lemmatize(word) for word in text.split()))
-        ),
+    return (
+        text_df.drop_duplicates(subset=text_column, ignore_index=True)
+        .assign(
+            cleaned_text=text_df[text_column].apply(clean_text),
+            stopwords_filtered=lambda df_: df_["cleaned_text"].apply(remove_stopwords),
+            stemmed=lambda df_: df_["stopwords_filtered"].apply(stem_text),
+            lemmatized=lambda df_: df_["stopwords_filtered"].apply(lemmatize_text),
+        )
+        .reset_index(drop=True)
     )
 
 
