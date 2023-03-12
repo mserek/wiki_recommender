@@ -8,6 +8,10 @@ requests = "*"
 bs4 = "*"
 pandas = "*"
 nltk = "*"
+matplotlib = "*"
+scikit-learn = "*"
+streamlit = "*"
+scipy = "*"
 
 [dev-packages]
 
