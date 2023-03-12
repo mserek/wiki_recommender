@@ -27,9 +27,7 @@ else:
 def app():
     st.set_page_config(
         page_title="Wiki recommender",
-        layout="centered",
-        initial_sidebar_state="auto",
-        menu_items=None,
+        layout="wide",
     )
     st.header("Wikipedia recommendations")
     tab_recomms, tab_plots = st.tabs(["Recommendations", "Dataset statistics"])
