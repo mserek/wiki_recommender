@@ -12,6 +12,7 @@ matplotlib = "*"
 scikit-learn = "*"
 streamlit = "*"
 scipy = "*"
+src = {path = "."}
 
 [dev-packages]
 
