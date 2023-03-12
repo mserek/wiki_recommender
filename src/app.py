@@ -148,10 +148,14 @@ def app():
         with wc1:
             st.image("assets/word_counts.png")
             st.image("assets/similarity_distribution.png")
+            st.subheader("Article with the worst match:")
             st.image("assets/Le_Malade_imaginaire.png")
+            st.subheader("Zipf's law [(see on wiki)](https://en.wikipedia.org/wiki/Zipf%27s_law):")
+            st.image("assets/zipf.png")
         with wc2:
             st.image("assets/word_counts_nostopwords.png")
             st.image("assets/max_similarity.png")
+            st.subheader("Article with best overall similarities:")
             st.image("assets/France.png")
 
 
