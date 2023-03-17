@@ -15,7 +15,9 @@ if __name__ == "__main__":
         .apply(lambda l: " ".join(l))
     )
     r = Recommender(mode="lemmatized")
-    r.fit(df)
+    r.fit(data)
+    r._articles = r._articles.drop(columns="lemmatized")
+
     with open("assets/saved_recommender.pickle", "wb") as f:
         pickle.dump(r, f)
 
