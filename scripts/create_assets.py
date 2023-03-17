@@ -2,7 +2,7 @@ import pickle
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from src.recommender import Recommender
+from wiki.recommender import Recommender
 import matplotlib.pyplot as plt
 
 plt.style.use("ggplot")

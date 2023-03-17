@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd
 import streamlit as st
 
-from src.recommender import Recommender, RocchioConfig
+from wiki.recommender import Recommender, RocchioConfig
+
 
 plt.style.use("ggplot")
 

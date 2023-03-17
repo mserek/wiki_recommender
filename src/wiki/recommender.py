@@ -17,7 +17,7 @@ import scipy.sparse  # type: ignore
 from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity  # type: ignore
 
-from src import text_prep
+from wiki import text_prep
 
 
 @dataclass
