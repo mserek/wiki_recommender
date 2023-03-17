@@ -8,11 +8,13 @@ import matplotlib.pyplot as plt
 plt.style.use("ggplot")
 if __name__ == "__main__":
     df = pd.read_csv("data/data.csv")
-    data = df.loc[:, ["article", "lemmatized"]].assign(
-        lemmatized=lambda df_: df_["lemmatized"]
-        .str.split()
-        .str[:500]
-        .apply(lambda l: " ".join(l))
+    data = (
+        df.loc[:, ["article", "lemmatized"]]
+        # .assign(
+        #     lemmatized=lambda df_: df_["lemmatized"]
+        #     .str.split()
+        #     .bstr[:500]
+        #     .apply(lambda l: " ".join(l)))
     )
     r = Recommender(mode="lemmatized")
     r.fit(data)
