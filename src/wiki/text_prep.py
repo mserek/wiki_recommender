@@ -172,7 +172,8 @@ def scrape_wiki_texts(
                     queue.append(title)
     return out
 
-
+  
+nltk.download("stopwords")
 nltk.download("wordnet")
 nltk.download("omw-1.4")
 _stemmer = nltk.stem.PorterStemmer()
