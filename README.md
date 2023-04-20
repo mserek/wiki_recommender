@@ -1,6 +1,6 @@
 # Recommender for wikipedia articles.
 
-Live demo: [streamlit](https://wikirecommender.streamlit.app/), used dataset of ~5000 articles
+Live demo: [streamlit](https://wiki-recommender.streamlit.app/), used dataset of ~5000 articles
 
 #### Running locally, requires python >= 3.10:
   * `pip install pipenv` (Install pipenv)
